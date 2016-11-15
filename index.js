@@ -20,11 +20,9 @@ app.engine('jsx', require('express-react-views').createEngine());
 app.use(session(config.session));
 
 app.get('/', function (expressRequest, expressResponse) {
-    if (!expressRequest.session.authenticated) {
-        expressResponse.render('not-authenticated', { url: config.getLoginUrl() });
-    } else {
+    checkSession(function () {
         expressResponse.render('authenticated');
-    }
+    });
 });
 
 app.get('/login', function (expressRequest, expressResponse) {
@@ -93,18 +91,20 @@ app.get('/logout', function (expressRequest, expressResponse) {
 });
 
 app.post('/validateToken', function (expressRequest, expressResponse) {
-    expressRequest.session.validation = null;
-    if (expressRequest.session.jwt.isSet) {
-        try {
+    checkSession(expressRequest, expressResponse, function () {
+        expressRequest.session.validation = null;
+        if (expressRequest.session.jwt.isSet) {
+            try {
 
-            var key = config.findAuthenticationKey(expressRequest.session.jwt.header.kid);
+                var key = config.findAuthenticationKey(expressRequest.session.jwt.header.kid);
 
-            expressRequest.session.validation = jws.verify(expressRequest.body.token, expressRequest.session.jwt.header.alg, convertCertificate(key.x5c[0]) );
-        } catch (exception) {
-            console.log(exception);
+                expressRequest.session.validation = jws.verify(expressRequest.body.token, expressRequest.session.jwt.header.alg, convertCertificate(key.x5c[0]));
+            } catch (exception) {
+                console.log(exception);
+            }
         }
-    }
-    renderAuthenticated(expressRequest, expressResponse);
+        renderAuthenticated(expressRequest, expressResponse);
+    });
 });
 
 app.listen(3000, function () {
@@ -170,6 +170,14 @@ app.listen(3000, function () {
     });
 
 });
+
+function checkSession(expressRequest, expressResponse, callback) {
+    if (!expressRequest.session || !expressRequest.session.authenticated) {
+        expressResponse.render('not-authenticated', { url: config.getLoginUrl() });
+    } else {
+        callback();
+    }
+}
 
 function renderAuthenticated(expressRequest, expressResponse) {
 
