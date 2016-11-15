@@ -20,7 +20,7 @@ app.engine('jsx', require('express-react-views').createEngine());
 app.use(session(config.session));
 
 app.get('/', function (expressRequest, expressResponse) {
-    checkSession(function () {
+    checkSession(expressRequest, expressResponse, function () {
         expressResponse.render('authenticated');
     });
 });
