@@ -25,18 +25,62 @@ app.get('/', function (expressRequest, expressResponse) {
     });
 });
 
-app.post('/login', function (expressRequest, expressResponse) {
+app.get('/login', function (expressRequest, expressResponse) {
     expressRequest.session.authenticated = true;
-    expressRequest.session.authenticationCode = expressRequest.body.id_token;
+    expressRequest.session.authenticationCode = expressRequest.query.code;
 
-    var jwtStrings = expressRequest.session.authenticationCode ? expressRequest.session.authenticationCode.split('.') : '';
-    expressRequest.session.jwt = {
-        isSet: jwtStrings.length > 0,
-        header: jwtStrings.length > 0 ? JSON.parse(atob(jwtStrings[0])) : '',
-        payload: jwtStrings.length > 0 ? JSON.parse(atob(jwtStrings[1])) : '',
-        signature: jwtStrings.length > 0 ? jwtStrings[2] : ''
-    };
-    renderAuthenticated(expressRequest, expressResponse);
+    new Promise(function (resolve, reject) {
+
+        var postData = config.getTokenParameters(expressRequest.query.code);
+
+        var options = {
+            host: config.iam.hostname,
+            path: config.iam.getTokenPath(),
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'Content-Length': postData.length
+
+            }
+        };
+
+        var httpRequest = https.request(options, (httpResponse) => {
+            var body = '';
+            httpResponse.setEncoding('utf8');
+            httpResponse.on('data', (chunk) => {
+                body += chunk;
+            });
+            httpResponse.on('end', () => {
+                resolve(body);
+            });
+        });
+        httpRequest.write(postData);
+        httpRequest.end();
+
+        httpRequest.on('error', (e) => {
+            reject(e);
+        });
+    }).then(function (body) {
+        return JSON.parse(body);
+    }).catch(function (e) {
+        console.log(e);
+    }).then(function (parsedBody) {
+        return parsedBody.access_token;
+    }).then(function (token) {
+        expressRequest.session.accessToken = token;
+        return token ? token.split('.') : '';
+    }).then(function (jwtStrings) {
+        return {
+            isSet: jwtStrings.length > 0,
+            header: jwtStrings.length > 0 ? JSON.parse(atob(jwtStrings[0])) : '',
+            payload: jwtStrings.length > 0 ? JSON.parse(atob(jwtStrings[1])) : '',
+            signature: jwtStrings.length > 0 ? jwtStrings[2] : ''
+        };
+    }).then(function (jwt) {
+        expressRequest.session.jwt = jwt;
+    }).then(function () {
+        renderAuthenticated(expressRequest, expressResponse);
+    });
 
 });
 
@@ -139,6 +183,7 @@ function renderAuthenticated(expressRequest, expressResponse) {
 
     expressResponse.render('authenticated', {
         authenticationCode: expressRequest.session.authenticationCode,
+        accessToken: expressRequest.session.accessToken,
         jwt: {
             header: JSON.stringify(expressRequest.session.jwt.header),
             payload: JSON.stringify(expressRequest.session.jwt.payload),

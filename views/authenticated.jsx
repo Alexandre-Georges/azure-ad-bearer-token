@@ -12,6 +12,9 @@ class AuthenticatedPage extends React.Component {
                     Your authentication code is {this.props.authenticationCode}
                     <br/>
                     <br/>
+                    Your access token is {this.props.accessToken}
+                    <br/>
+                    <br/>
                     JWT header {this.props.jwt.header}
                     <br/>
                     JWT payload {this.props.jwt.payload}
@@ -24,7 +27,7 @@ class AuthenticatedPage extends React.Component {
                     <br/>
                     <br/>
                     <form method="POST" action="/validateToken">
-                        Token validation <input type="text" name="token" value={this.props.authenticationCode} />&nbsp;<input type="submit" value="Validate" />
+                        Token validation <input type="text" name="token" value={this.props.accessToken} />&nbsp;<input type="submit" value="Validate" />
                     </form>
                     <br/>
                     <br/>
