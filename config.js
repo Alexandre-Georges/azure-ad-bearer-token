@@ -21,10 +21,12 @@ const session = {
 
 const loginParameters = querystring.stringify({
     'client_id' : iam.clientId,
-    'response_type' : 'code',
+    'response_type' : 'id_token',
     'redirect_uri' : redirectUrl,
-    'response_mode': 'query',
-    'state': '12345'
+    'response_mode': 'form_post',
+    'scope': 'openid',
+    'state': '12345',
+    'nonce': Date.now()
 });
 
 var authenticationKeys = [];
